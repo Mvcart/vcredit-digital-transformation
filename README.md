@@ -1,8 +1,8 @@
 # V-Credit
 
-Pipeline de dados do atendimento da V-Credit, desenvolvido para o case do Visagio Rocket Lab 2026. O projeto usa a arquitetura medalhão (bronze, silver e gold) no Databricks.
+Este projeto foi desenvolvido como parte do desafio de Engenharia de Dados do **Visagio Rocket Lab 2026.2**, utilizando um cenário de atendimento da empresa fictícia **V-Credit**.
 
-O objetivo é transformar as bases brutas de atendimento (jan/2025 a jul/2026) em dados **confiáveis, rastreáveis e atualizados automaticamente**, que servem de base para o painel de indicadores e para as análises de negócio.
+O objetivo é construir um pipeline de dados no **Databricks**, seguindo a arquitetura medalhão (**Bronze, Silver e Gold**), para organizar, tratar e transformar dados brutos em informações estruturadas, consistentes e prontas para análise.
 
 ---
 
@@ -30,12 +30,13 @@ notebooks/
     gold_chamados_nota        base de satisfação (nota, motivo e tempos reais)
     gold_qualidade_dados      métricas de qualidade dos dados (painel)
     gold_indicadores          indicadores mensais da operação (painel)
-dashboards/
-  painel_vcredit.lvdash.json  export do painel de indicadores
 docs/
-  diagnostico_silver          verificações usadas para identificar as inconsistências
+  figures/                    gráficos utilizados para as análise
   testes/                     regras de tratamento de duplicatas
-  painel/                     resultados dashboards
+  painel/
+    Indicadores_operacao.png
+    Qualidade_dados.jpeg
+    painel_vcredit.lvdash.json      painel em formato .json
 ```
 
 Cada notebook começa com uma célula de documentação no mesmo padrão: origem, destino, grão, dependências, regras de tratamento e decisões.
@@ -66,11 +67,12 @@ O pipeline roda pelo job `pipeline_vcredit`, que lê os notebooks direto da bran
 4. Gold, painel: `gold_qualidade_dados` e `gold_indicadores` rodam por último, depois de `gold_chamados_nota`.
 ### Agendamento
  
-O job roda a cada 5 dias. Como as fontes são cargas fixas, a frequência foi definida só por padrão e pode ser alterada se passarem a existir fontes atualizadas diariamente.
+O job roda a cada 5 dias. Como as fontes são fixas, a frequência foi definida só por padrão e pode ser alterada se passarem a existir fontes atualizadas diariamente.
  
 ### Reexecução
  
-Rodar o pipeline de novo é seguro. Todas as tabelas são gravadas com `overwrite` (ou `CREATE OR REPLACE`), sempre a partir da camada anterior, então o resultado sobre os mesmos dados é idêntico e não há registros duplicados. A única coluna que muda é o `ingest_timestamp`, que guarda o momento da carga. Nas tabelas gold, um `assert` confirma que continua existindo uma linha por chamado.
+Todas as tabelas são gravadas com `overwrite` (ou `CREATE OR REPLACE`), sempre a partir da camada anterior, então o resultado sobre os mesmos dados é idêntico e não há registros duplicados. A única coluna que muda é o `ingest_timestamp`, que guarda o momento da carga. Nas tabelas gold, um `assert` confirma que continua existindo uma linha por chamado.
+Dessa forma, rodar o pipeline de novo é seguro. 
  
 ### Execução manual
  
@@ -106,6 +108,8 @@ Dados pessoais: CPF, nome e e-mail não são usados nas tabelas de análise, e a
 | Cliente diferente entre `chamados` e `chamados_hora` | Mantidos | 1.327 | 1,0% |
 | Atendente placeholder (0, 99, 999) | Mantidos e marcados | 764 | 0,6% |
 | Tempo de atendimento corrigido pelos horários | Recalculado na gold | 28.989 | 22,0% |
+Tempo de espera corrigido pelos horários | Recalculado na gold | 6609 | 5%
+Chamados com nota inválida na pesquisa (vazia, 0 ou > 5) | Nota anulada | 6626 | 5,2%
 
 **Principal impacto:** o tempo médio de atendimento registrado subestima o real. No nível 2 (atendimento especializado), o registro indica **1,7 min**, mas o tempo real calculado pelos horários é **38,7 min**; no nível 1, 6,1 min registrados contra 16,1 min reais.
 
@@ -128,6 +132,6 @@ Indicadores da operação
 - Resolução por canal e abandono nos canais humanos.
 - Tempo real de atendimento e satisfação mensal.
 
-Para ver o painel, importe o arquivo `dashboards/painel_vcredit.lvdash.json` em Dashboards > Import. Como ele consulta a gold, o pipeline precisa ter rodado antes no mesmo workspace. As capturas de cada página estão em `docs/painel/`.
+Para ver o painel, importe o arquivo `painel/painel_vcredit.lvdash.json`. Como ele consulta a gold, o pipeline precisa ter rodado antes no mesmo workspace. As capturas de cada página estão em `docs/painel/`.
 
 ---
