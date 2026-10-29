@@ -1,0 +1,926 @@
+{
+  "datasets": [
+    {
+      "name": "55457e9d",
+      "displayName": "qualidade_tabelas",
+      "queryLines": [
+        "SELECT * FROM rocket_lab.vcredit_gold.qualidade_tabelas"
+      ]
+    },
+    {
+      "name": "923774a0",
+      "displayName": "qualidade_indicadores",
+      "queryLines": [
+        "SELECT * FROM rocket_lab.vcredit_gold.qualidade_indicadores"
+      ]
+    },
+    {
+      "name": "9fd980e3",
+      "displayName": "tempo_registrado_real",
+      "queryLines": [
+        "SELECT canal,\r\n",
+        "       ROUND(AVG(tempo_atendimento) / 60, 1) AS atendimento_registrado_min,\r\n",
+        "       ROUND(AVG(atend_seg) / 60, 1)         AS atendimento_real_min,\r\n",
+        "       ROUND(AVG(CASE WHEN NOT abandono THEN tempo_espera END) / 60, 1) AS espera_registrada_min,\r\n",
+        "       ROUND(AVG(espera_seg) / 60, 1)        AS espera_real_min\r\n",
+        "FROM rocket_lab.vcredit_gold.chamados_nota\r\n",
+        "WHERE canal IN ('atendimento inicial', 'atendimento especializado')\r\n",
+        "GROUP BY canal"
+      ]
+    },
+    {
+      "name": "355a2ecc",
+      "displayName": "indicadores_mensais",
+      "queryLines": [
+        "SELECT * FROM rocket_lab.vcredit_gold.indicadores_mensais"
+      ]
+    },
+    {
+      "name": "5c97948d",
+      "displayName": "satisfacao_mensal",
+      "queryLines": [
+        "SELECT mes,\r\n",
+        "       ROUND(AVG(nota), 2) AS nota_media,\r\n",
+        "       ROUND(AVG(CASE WHEN tem_nota THEN 1 ELSE 0 END) * 100, 1) AS taxa_resposta_pct\r\n",
+        "FROM rocket_lab.vcredit_gold.chamados_nota\r\n",
+        "WHERE mes IS NOT NULL\r\n",
+        "GROUP BY mes\r\n",
+        "ORDER BY mes"
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "name": "8342bcf0",
+      "displayName": "Qualidade dos dados",
+      "layout": [
+        {
+          "widget": {
+            "name": "bd90a3d6",
+            "multilineTextboxSpec": {
+              "lines": [
+                "# <span style=\"text-align:center;display:block;\">Qualidade dos dados</span>"
+              ],
+              "verticalAlign": "VERTICAL_ALIGN_CENTER"
+            },
+            "specExtensions": {
+              "widgetBackgroundColor": {
+                "dark": "#276AA1"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 12,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "linhas-por-camada-bronze-silver",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "55457e9d",
+                  "fields": [
+                    {
+                      "name": "tabela",
+                      "expression": "`tabela`"
+                    },
+                    {
+                      "name": "linhas_bronze",
+                      "expression": "`linhas_bronze`"
+                    },
+                    {
+                      "name": "linhas_silver",
+                      "expression": "`linhas_silver`"
+                    },
+                    {
+                      "name": "removidas",
+                      "expression": "`removidas`"
+                    },
+                    {
+                      "name": "pct_removidas",
+                      "expression": "`pct_removidas`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "showDescription": true,
+                "title": {
+                  "value": "### <span style=\"color: #FFAB00;\">Linhas por camada (bronze -> silver)</span>",
+                  "fields": []
+                },
+                "description": {
+                  "value": "Quantos registros cada tabela tinha na origem (bronze) e quantos ficaram após a limpeza (silver). Removidas: duplicados e registros inválidos.",
+                  "fields": []
+                }
+              },
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "tabela"
+                  },
+                  {
+                    "fieldName": "linhas_bronze"
+                  },
+                  {
+                    "fieldName": "linhas_silver"
+                  },
+                  {
+                    "fieldName": "removidas"
+                  },
+                  {
+                    "fieldName": "pct_removidas"
+                  }
+                ]
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 12,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "inconsistencias-tratadas",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "923774a0",
+                  "fields": [
+                    {
+                      "name": "inconsistencia",
+                      "expression": "`inconsistencia`"
+                    },
+                    {
+                      "name": "tratamento",
+                      "expression": "`tratamento`"
+                    },
+                    {
+                      "name": "chamados",
+                      "expression": "`chamados`"
+                    },
+                    {
+                      "name": "pct_chamados",
+                      "expression": "`pct_chamados`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "showDescription": true,
+                "title": {
+                  "value": "### <span style=\"color: #FFAB00;\">Inconsistências tratadas</span>",
+                  "fields": []
+                },
+                "description": {
+                  "value": "Problemas encontrados nos dados, o tratamento aplicado e quantos chamados cada um afeta. A maioria foi mantida e marcada, para não perder chamados reais.",
+                  "fields": []
+                }
+              },
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "inconsistencia"
+                  },
+                  {
+                    "fieldName": "tratamento"
+                  },
+                  {
+                    "fieldName": "chamados"
+                  },
+                  {
+                    "fieldName": "pct_chamados"
+                  }
+                ]
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 8,
+            "width": 12,
+            "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "tempo-registrado-x-real",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "9fd980e3",
+                  "fields": [
+                    {
+                      "name": "canal",
+                      "expression": "`canal`"
+                    },
+                    {
+                      "name": "atendimento_real_min",
+                      "expression": "`atendimento_real_min`"
+                    },
+                    {
+                      "name": "atendimento_registrado_min",
+                      "expression": "`atendimento_registrado_min`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "showDescription": true,
+                "title": {
+                  "value": "### <span style=\"color: #FFAB00;\">Tempo de atendimento: registrado × real (min)</span>",
+                  "fields": []
+                },
+                "description": {
+                  "value": "O sistema registra no máximo \\~16 min por atendimento. Recalculado pelos horários de início e fim, o tempo real é bem maior: no nível 2, 38,7 min contra 1,7 min registrados.",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "mark": {
+                "layout": "group"
+              },
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "canal",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "y": {
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "fields": [
+                    {
+                      "fieldName": "atendimento_real_min",
+                      "displayName": "Real"
+                    },
+                    {
+                      "fieldName": "atendimento_registrado_min",
+                      "displayName": "Registrado"
+                    }
+                  ],
+                  "axis": {
+                    "title": "Minutos"
+                  }
+                },
+                "label": {
+                  "show": true
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 15,
+            "width": 12,
+            "height": 6
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layoutVersion": "GRID_V1"
+    },
+    {
+      "name": "61eda3e5",
+      "displayName": "Indicadores da operação",
+      "layout": [
+        {
+          "widget": {
+            "name": "352f4691",
+            "multilineTextboxSpec": {
+              "lines": [
+                "# <span style=\"text-align:center;display:block;\">Indicadores da operação</span>"
+              ],
+              "verticalAlign": "VERTICAL_ALIGN_CENTER"
+            },
+            "specExtensions": {
+              "widgetBackgroundColor": {
+                "dark": "#276AA1"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 12,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "total-de-chamados",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "355a2ecc",
+                  "fields": [
+                    {
+                      "name": "sum(chamados)",
+                      "expression": "SUM(`chamados`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showDescription": true,
+                "showTitle": true,
+                "title": {
+                  "value": "### <span style=\"color: #FFAB00;\">Total de chamados</span>",
+                  "fields": []
+                },
+                "description": {
+                  "value": "Chamados de jan/2025 a jul/2026, após a limpeza.",
+                  "fields": []
+                }
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(chamados)"
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 6,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "custo-total",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "355a2ecc",
+                  "fields": [
+                    {
+                      "name": "sum(custo_total)",
+                      "expression": "SUM(`custo_total`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showDescription": true,
+                "showTitle": true,
+                "title": {
+                  "value": "### <span style=\"color: #FFAB00;\">Custo total</span>",
+                  "fields": []
+                },
+                "description": {
+                  "value": "Gasto total com atendimento no período.",
+                  "fields": []
+                }
+              },
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(custo_total)"
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 2,
+            "width": 6,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "volume-per-mes-canal",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "355a2ecc",
+                  "fields": [
+                    {
+                      "name": "canal",
+                      "expression": "`canal`"
+                    },
+                    {
+                      "name": "monthly(mes)",
+                      "expression": "DATE_TRUNC(\"MONTH\", `mes`)"
+                    },
+                    {
+                      "name": "sum(chamados)",
+                      "expression": "SUM(`chamados`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "showDescription": true,
+                "title": {
+                  "value": "### <span style=\"color: #FFAB00;\">Volume por mês e canal</span>",
+                  "fields": []
+                },
+                "description": {
+                  "value": "Quantos chamados entram por mês, e por qual canal.",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "mark": {
+                "colors": [
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 2
+                  }
+                ],
+                "layout": "stack"
+              },
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "monthly(mes)",
+                  "displayName": "Mês",
+                  "scale": {
+                    "type": "temporal"
+                  }
+                },
+                "y": {
+                  "fieldName": "sum(chamados)",
+                  "displayName": "Chamados",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "canal",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 5,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "custo-por-mes-canal",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "355a2ecc",
+                  "fields": [
+                    {
+                      "name": "canal",
+                      "expression": "`canal`"
+                    },
+                    {
+                      "name": "monthly(mes)",
+                      "expression": "DATE_TRUNC(\"MONTH\", `mes`)"
+                    },
+                    {
+                      "name": "sum(custo_total)",
+                      "expression": "SUM(`custo_total`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "showDescription": true,
+                "title": {
+                  "value": "### <span style=\"color: #FFAB00;\">Custo por mês e canal</span>",
+                  "fields": []
+                },
+                "description": {
+                  "value": "Onde está o gasto: o atendimento humano concentra quase todo o custo.",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "monthly(mes)",
+                  "displayName": "Mês",
+                  "scale": {
+                    "type": "temporal"
+                  }
+                },
+                "y": {
+                  "fieldName": "sum(custo_total)",
+                  "displayName": "Custo total",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "canal",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 5,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "resolucao-por-canal",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "355a2ecc",
+                  "fields": [
+                    {
+                      "name": "canal",
+                      "expression": "`canal`"
+                    },
+                    {
+                      "name": "monthly(mes)",
+                      "expression": "DATE_TRUNC(\"MONTH\", `mes`)"
+                    },
+                    {
+                      "name": "avg(pct_resolvido)",
+                      "expression": "AVG(`pct_resolvido`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "showDescription": true,
+                "title": {
+                  "value": "### <span style=\"color: #FFAB00;\">Resolução por canal</span>",
+                  "fields": []
+                },
+                "description": {
+                  "value": "% dos chamados resolvidos em cada canal. A URA e o chatbot resolvem cerca de metade.",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "monthly(mes)",
+                  "displayName": "Mês",
+                  "scale": {
+                    "type": "temporal"
+                  }
+                },
+                "y": {
+                  "fieldName": "avg(pct_resolvido)",
+                  "displayName": "% resolvido",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "canal",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 11,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "abandono-nos-canais-humanos",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "355a2ecc",
+                  "fields": [
+                    {
+                      "name": "canal",
+                      "expression": "`canal`"
+                    },
+                    {
+                      "name": "monthly(mes)",
+                      "expression": "DATE_TRUNC(\"MONTH\", `mes`)"
+                    },
+                    {
+                      "name": "avg(pct_abandono)",
+                      "expression": "AVG(`pct_abandono`)"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`tipo_canal` IN ('humano')"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "showDescription": true,
+                "title": {
+                  "value": "### <span style=\"color: #FFAB00;\">Abandono nos canais humanos</span>",
+                  "fields": []
+                },
+                "description": {
+                  "value": "% dos clientes que desistem na fila antes de serem atendidos.",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "mark": {
+                "colors": [
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 3
+                  }
+                ],
+                "lineShape": "linear"
+              },
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "monthly(mes)",
+                  "displayName": "Mês",
+                  "scale": {
+                    "type": "temporal"
+                  }
+                },
+                "y": {
+                  "fieldName": "avg(pct_abandono)",
+                  "displayName": "% abandono",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "canal",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 11,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "tempo-real-atendimento",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "355a2ecc",
+                  "fields": [
+                    {
+                      "name": "canal",
+                      "expression": "`canal`"
+                    },
+                    {
+                      "name": "monthly(mes)",
+                      "expression": "DATE_TRUNC(\"MONTH\", `mes`)"
+                    },
+                    {
+                      "name": "avg(atend_medio_min)",
+                      "expression": "AVG(`atend_medio_min`)"
+                    }
+                  ],
+                  "filters": [
+                    {
+                      "expression": "`tipo_canal` IN ('humano')"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "showDescription": true,
+                "title": {
+                  "value": "### <span style=\"color: #FFAB00;\">Tempo real de atendimento</span>",
+                  "fields": []
+                },
+                "description": {
+                  "value": "Duração real do atendimento (calculada pelos horários), em minutos.",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "monthly(mes)",
+                  "displayName": "Mês",
+                  "scale": {
+                    "type": "temporal"
+                  }
+                },
+                "y": {
+                  "fieldName": "avg(atend_medio_min)",
+                  "displayName": "Atendimento médio (minutos)",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "canal",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 17,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "satisfacao-mensal",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "5c97948d",
+                  "fields": [
+                    {
+                      "name": "monthly(mes)",
+                      "expression": "DATE_TRUNC(\"MONTH\", `mes`)"
+                    },
+                    {
+                      "name": "sum(nota_media)",
+                      "expression": "SUM(`nota_media`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "frame": {
+                "showTitle": true,
+                "showDescription": true,
+                "title": {
+                  "value": "### <span style=\"color: #FFAB00;\">Satisfação mensal</span>",
+                  "fields": []
+                },
+                "description": {
+                  "value": "Nota média (1 a 5) dos clientes que responderam à pesquisa.",
+                  "fields": []
+                }
+              },
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "monthly(mes)",
+                  "displayName": "Mês",
+                  "scale": {
+                    "type": "temporal"
+                  }
+                },
+                "y": {
+                  "fieldName": "sum(nota_media)",
+                  "displayName": "Nota média",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 6,
+            "y": 17,
+            "width": 6,
+            "height": 6
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layoutVersion": "GRID_V1"
+    }
+  ],
+  "uiSettings": {
+    "theme": {
+      "widgetHeaderAlignment": "ALIGNMENT_UNSPECIFIED"
+    },
+    "applyModeEnabled": false
+  }
+}
