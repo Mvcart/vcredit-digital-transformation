@@ -1,28 +1,8 @@
 # V-Credit
 
-Pipeline de dados da operação de atendimento da V-Credit (case Visagio Rocket Lab 2026), com **arquitetura medalhão** (bronze → silver → gold).
+Pipeline de dados do atendimento da V-Credit, desenvolvido para o case do Visagio Rocket Lab 2026. O projeto usa a arquitetura medalhão (bronze, silver e gold) no Databricks.
 
 O objetivo é transformar as bases brutas de atendimento (jan/2025 a jul/2026) em dados **confiáveis, rastreáveis e atualizados automaticamente**, que servem de base para o painel de indicadores e para as análises de negócio.
-
----
-
-## Arquitetura
-
-```
-CSVs de origem (8 bases)
-        │
-   ┌────▼─────┐   dados como vieram da fonte (tudo string) + colunas de rastreabilidade
-   │  BRONZE  │   rocket_lab.vcredit_bronze
-   └────┬─────┘
-   ┌────▼─────┐   limpeza, padronização, tipagem e validação; inconsistências removidas ou marcadas
-   │  SILVER  │   rocket_lab.vcredit_silver
-   └────┬─────┘
-   ┌────▼─────┐   tabelas integradas e métricas prontas para análise e painel
-   │   GOLD   │   rocket_lab.vcredit_gold
-   └────┬─────┘
-        ▼
-  Painel de indicadores (Databricks Dashboards)
-```
 
 ---
 
@@ -55,6 +35,7 @@ dashboards/
 docs/
   diagnostico_silver          verificações usadas para identificar as inconsistências
   testes/                     regras de tratamento de duplicatas
+  painel/                     resultados dashboards
 ```
 
 Cada notebook começa com uma célula de documentação no mesmo padrão: origem, destino, grão, dependências, regras de tratamento e decisões.
@@ -75,43 +56,45 @@ Cada notebook começa com uma célula de documentação no mesmo padrão: origem
 
 ---
 
-## Execução (job)
-
-O pipeline roda pelo job **`pipeline_vcredit`**, que lê os notebooks direto da branch `main` deste repositório e respeita as dependências entre eles:
-
-```
-bronze_ingestion
-   │
-   ├─ silver_canais, silver_motivos, silver_atendentes,
-   │  silver_clientes, silver_custos, silver_pesquisa, silver_chamados   (em paralelo)
-   │
-   ├─ silver_chamados_hora            (depende de silver_clientes e silver_chamados)
-   │
-   ├─ gold_fato_chamados, gold_chamados_custos, gold_chamados_nota      (dependem de todas as silvers)
-   │
-   └─ gold_qualidade_dados, gold_indicadores                            (dependem de gold_chamados_nota)
-```
-
-- **Agendamento:** a cada 5 dias. Como as fontes são cargas fixas, a frequência pode ser ajustada quando houver fontes atualizadas diariamente.
-- **Idempotência:** todas as tabelas são gravadas com `overwrite` (ou `CREATE OR REPLACE`), lendo sempre da camada anterior. Reexecutar o pipeline sobre os mesmos dados produz o mesmo resultado, sem duplicar registros. A única coluna que muda a cada execução é `ingest_timestamp`, que registra o momento da carga.
-- **Integridade:** as tabelas gold verificam (`assert`) que mantêm exatamente uma linha por chamado.
-
-Para rodar manualmente, execute os notebooks na ordem acima, ou use **Run now** no job.
+## Execução
+ 
+O pipeline roda pelo job `pipeline_vcredit`, que lê os notebooks direto da branch `main` deste repositório. As etapas seguem esta ordem:
+ 
+1. Ingestão: `bronze_ingestion` carrega os 8 CSVs.
+2. Silver: os notebooks `silver_*` rodam em paralelo. A exceção é `silver_chamados_hora`, que espera `silver_clientes` e `silver_chamados` terminarem, porque valida os registros contra essas duas tabelas.
+3. Gold, base: `gold_fato_chamados`, `gold_chamados_custos` e `gold_chamados_nota` rodam depois que todas as silvers terminam.
+4. Gold, painel: `gold_qualidade_dados` e `gold_indicadores` rodam por último, depois de `gold_chamados_nota`.
+### Agendamento
+ 
+O job roda a cada 5 dias. Como as fontes são cargas fixas, a frequência foi definida só por padrão e pode ser alterada se passarem a existir fontes atualizadas diariamente.
+ 
+### Reexecução
+ 
+Rodar o pipeline de novo é seguro. Todas as tabelas são gravadas com `overwrite` (ou `CREATE OR REPLACE`), sempre a partir da camada anterior, então o resultado sobre os mesmos dados é idêntico e não há registros duplicados. A única coluna que muda é o `ingest_timestamp`, que guarda o momento da carga. Nas tabelas gold, um `assert` confirma que continua existindo uma linha por chamado.
+ 
+### Execução manual
+ 
+Use o Run now do job ou execute os notebooks na ordem acima.
 
 ---
 
-## Principais regras e decisões
-
-- **Padronização de texto:** canal e motivo ficam sem acento, em minúsculo e sem espaços sobrando nas tabelas de chamados, canais e motivos, para que os joins funcionem.
-- **Marcar em vez de apagar:** inconsistências que não invalidam o chamado são marcadas com colunas de flag (abandono, atendente placeholder, cliente fora da base), e não removidas, para não perder chamados reais e permitir medir o impacto.
-- **Abandono:** chamado sem hora de início de atendimento (todos em canais humanos e sem tempo de atendimento) é tratado como desistência na fila.
-- **Tempos reais:** o tempo de espera e o de atendimento registrados não passam de ~999 s (~16 min). Na gold, os tempos são o maior valor entre o registrado e o calculado pelos horários (`espera_seg`, `atend_seg`). Onde o registro passa de 10 s, ele bate 100% com os horários.
-- **Atendente:** URA e chatbot não têm atendente humano, mas os dados trazem um `id_atendente` aleatório nesses canais; análises por atendente consideram só os canais humanos.
-- **Dados pessoais:** CPF, nome e e-mail não são usados nas tabelas de análise; a idade é usada como faixa etária.
+## Decisões de tratamento
+ 
+Padronização de texto: Canal e motivo ficam em minúsculas, sem acento e sem espaços extras. Sem isso, os joins entre `chamados`, `canais` e `motivos` perdem linhas por diferenças de grafia.
+ 
+Marcar em vez de remover: Inconsistências que não invalidam o chamado (abandono, atendente placeholder, cliente fora da base) recebem uma flag e permanecem na tabela. Assim nenhum chamado real é perdido e o impacto de cada problema pode ser medido.
+ 
+Abandono: É o chamado sem hora de início de atendimento. Todos ocorrem em canais humanos e não têm tempo de atendimento, por isso são tratados como desistência na fila.
+ 
+Tempos: Os valores registrados de espera e de atendimento não passam de cerca de 999 s (aproximadamente 16 min). Na gold, o tempo adotado é o maior entre o registrado e o calculado pelos horários (`espera_seg` e `atend_seg`). Quando o valor registrado passa de 10 s, ele coincide em 100% dos casos com os horários, o que indica que o cálculo pelos horários é a referência mais confiável.
+ 
+Atendente: URA e chatbot não têm atendente humano, mas a base traz um `id_atendente` aleatório nesses canais. As análises por atendente consideram apenas os canais humanos.
+ 
+Dados pessoais: CPF, nome e e-mail não são usados nas tabelas de análise, e a idade aparece apenas como faixa etária.
 
 ---
 
-## Qualidade dos dados (resultado dos tratamentos)
+## Qualidade dos dados
 
 | Inconsistência | Tratamento | Chamados | % |
 |---|---|---|---|
@@ -131,19 +114,20 @@ Os números completos e atualizados estão no painel.
 ---
 
 ## Painel de indicadores
+ 
+O painel foi feito no Databricks (Dashboards) e lê as tabelas da gold. Ele tem duas páginas.
+ 
+Qualidade dos dados
+- Linhas por camada: quantos registros cada tabela tinha na bronze, quantos sobraram na silver e quantos foram removidos.
+- Inconsistências tratadas: cada problema encontrado, o tratamento aplicado e quantos chamados afeta.
+- Tempo de atendimento, registrado e real, por canal.
 
-**Link:** [inserir link do painel publicado]
+Indicadores da operação
+- Total de chamados e custo total do período.
+- Volume e custo por mês e canal.
+- Resolução por canal e abandono nos canais humanos.
+- Tempo real de atendimento e satisfação mensal.
 
-- **Qualidade dos dados:** linhas por camada, inconsistências encontradas e tratamento, e tempo registrado × real.
-- **Indicadores da operação:** volume, custo, resolução, abandono, tempo real de atendimento e satisfação, por mês e por canal.
-
-O painel lê as tabelas da gold e reflete os dados da última execução do job. O arquivo `dashboards/painel_vcredit.lvdash.json` permite recriá-lo em outro workspace (Dashboards > Import).
+Para ver o painel, importe o arquivo `dashboards/painel_vcredit.lvdash.json` em Dashboards > Import. Como ele consulta a gold, o pipeline precisa ter rodado antes no mesmo workspace. As capturas de cada página estão em `docs/painel/`.
 
 ---
-
-## Equipe
-
-- [nome] · bronze
-- [nome] · silver e gold
-- [nome] · silver e gold
-- [nome] · regras de tratamento de duplicatas
