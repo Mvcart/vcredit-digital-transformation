@@ -133,8 +133,7 @@ Indicadores da operação
 - Tempo real de atendimento e satisfação mensal.
 
 ---
-Link da apresentação: https://www.canva.com/design/DAHZafa8muo/yOwt-H6rV-tqH7UURUnebg/edit
-
 Para ver o painel, importe o arquivo `painel/painel_vcredit.lvdash.json`. Como ele consulta a gold, o pipeline precisa ter rodado antes no mesmo workspace. As capturas de cada página estão em `docs/painel/`.
 
 ---
+Link da apresentação: https://www.canva.com/design/DAHZafa8muo/yOwt-H6rV-tqH7UURUnebg/edit
